@@ -71,27 +71,32 @@ public class NcWmsService {
             Object queryRangePlain = (DateRange) request.getGetMapRequest().getTime().get(0);
             if (queryRangePlain!=null && queryRangePlain instanceof DateRange) {
                 DateRange queryRange = (DateRange) queryRangePlain;
+
                 // FIXME: should we consider feature count parameter???
                 // int numDays = request.getFeatureCount();
                 int numDays = Query.DEFAULT_MAX;
 
                 final List<MapLayerInfo> requestedLayers = request.getQueryLayers();
-                FeatureInfoRequestParameters requestParams = new FeatureInfoRequestParameters(request);
+                
                 List<SimpleFeature> features = new ArrayList<>();
 
                 // FIXME: should we also consider the request if it includes several layers ??
                 if (requestedLayers.size()==1) {
                     final MapLayerInfo layer = requestedLayers.get(0);
+                    LayerIdentifier identifier = getLayerIdentifier(layer);
                     SimpleFeatureBuilder featureBuilder = getResultFeatureBuilder(layer.getName());
                     try {
                         TreeSet availableDates = wms.queryCoverageTimes(layer.getCoverage(), queryRange, numDays);
+                        FeatureInfoRequestParameters requestParams;
+                        List<FeatureCollection> identifiedCollections;
+                        
                         for (Object d: availableDates.descendingSet()) {
-                            System.out.println(d);
-                            System.out.println(d.getClass());
                             Date date = (Date) d;
-                            LayerIdentifier identifier = getLayerIdentifier(layer);
-                            List<FeatureCollection> identifiedCollections = identifier.identify(requestParams,
-                                    1);
+                            DateRange currentDate = new DateRange(date, date);
+                            request.getGetMapRequest().getTime().remove(0);
+                            request.getGetMapRequest().getTime().add(currentDate);
+                            requestParams = new FeatureInfoRequestParameters(request);
+                            identifiedCollections = identifier.identify(requestParams, 1);
                             for (FeatureCollection c: identifiedCollections) {
                                 FeatureIterator featIter = c.features();
                                 if (featIter.hasNext()) { // no need to loop, we just want one value
@@ -114,9 +119,11 @@ public class NcWmsService {
                     } catch (Exception e) {
                     }
                 }
+                // restore the original range
+                request.getGetMapRequest().getTime().remove(0);
+                request.getGetMapRequest().getTime().add(queryRange);
             }
         }
-
         return result;
     }
     
