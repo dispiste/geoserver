@@ -14,11 +14,19 @@
     <constructor-arg ref="GIFMapResponse" />
   </bean>
   
+  <bean id="ncWmsGetTimeSeriesResponse" class="org.geoserver.wms.ncwms.GetTimeSeriesResponse">
+        <constructor-arg ref="wms"/>
+  </bean>
+  
+  <bean id="ncWmsService" class="org.geoserver.wms.ncwms.NcWmsService">
+        <constructor-arg ref="wms"/>
+  </bean>
+  
+  <bean id="ncWmsServiceCallback" class="org.geoserver.wms.ncwms.NcWmsServiceCallback">
+    <constructor-arg ref="ncWmsService"/>
+  </bean>
+  
   <bean id="ncWmsInitializer" class="org.geoserver.wms.ncwms.NcWmsInitializer">
   </bean>
-  <bean id="getTimeSeriesNcWmsInterceptor" class="org.geoserver.wms.ncwms.GetTimeSeriesNcWmsInterceptor">
-    <constructor-arg index="0" ref="wms"/>
-    <constructor-arg index="1" ref="wmsServiceTarget"/>
-</bean>
-  
+
 </beans>
