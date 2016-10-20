@@ -37,12 +37,21 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
 import org.opengis.feature.Feature;
 import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.crs.ProjectedCRS;
 import org.springframework.util.Assert;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
 import net.opengis.wfs.FeatureCollectionType;
 
+/**
+ * Formats the output of a GetTimeSeries response as a JPG or PNG chart
+ * or as a CSV file.
+ * 
+ * @author Cesar Martinez Izquierdo
+ *
+ */
 public class GetTimeSeriesResponse extends Response{
     private static final Logger LOGGER = Logging.getLogger(GetTimeSeriesResponse.class);
     protected static final Set<String> outputFormats = new HashSet<String>();
@@ -167,14 +176,21 @@ public class GetTimeSeriesResponse extends Response{
         OutputStreamWriter osw = new OutputStreamWriter(output, charSet);
         PrintWriter writer = new PrintWriter(osw);
         
+        CoordinateReferenceSystem crs = request.getGetMapRequest().getCrs();
         final Coordinate middle = WMS.pixelToWorld(request.getXPixel(),
                 request.getYPixel(),
-                new ReferencedEnvelope(request.getGetMapRequest().getBbox(), request.getGetMapRequest().getCrs()),
+                new ReferencedEnvelope(request.getGetMapRequest().getBbox(), crs),
                 request.getGetMapRequest().getWidth(),
                 request.getGetMapRequest().getHeight());
         
-        writer.println("# Latitude: "+middle.y);
-        writer.println("# Longitude: "+middle.x);
+        if (crs instanceof ProjectedCRS) {
+            writer.println("# X: "+middle.y);
+            writer.println("# Y: "+middle.x);            
+        }
+        else {
+            writer.println("# Latitude: "+middle.y);
+            writer.println("# Longitude: "+middle.x);
+        }
         FeatureIterator reader = null;
         try {
             final List collections = results.getFeature();
