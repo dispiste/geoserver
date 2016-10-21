@@ -98,7 +98,7 @@ public class NcWmsService {
                         throw new ServiceException("The GetTimeSeries operation is only defined for coverage layers");
                     }
                     LayerIdentifier identifier = getLayerIdentifier(layer);
-                    SimpleFeatureBuilder featureBuilder = getResultFeatureBuilder(layer.getName());
+                    SimpleFeatureBuilder featureBuilder = getResultFeatureBuilder(buildTypeName(layer));
                     try {
                         TreeSet availableDates = wms.queryCoverageTimes(coverage, queryRange, numDays);
                         FeatureInfoRequestParameters requestParams;
@@ -156,7 +156,7 @@ public class NcWmsService {
         String name = layer.getName();
         if (layer.getCoverage()!=null && layer.getCoverage().getDimensions().size()==1
                 && layer.getCoverage().getDimensions().get(0).getUnit()!=null) {
-            name += layer.getCoverage().getDimensions().get(0).getUnit();
+            name += " ("+layer.getCoverage().getDimensions().get(0).getUnit()+")";
         }
         return name;
     }
