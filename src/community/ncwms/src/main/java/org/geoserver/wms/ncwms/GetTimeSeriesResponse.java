@@ -31,6 +31,8 @@ import org.geotools.util.logging.Logging;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.Millisecond;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -115,6 +117,8 @@ public class GetTimeSeriesResponse extends Response{
     private void writeChart(GetFeatureInfoRequest request, FeatureCollectionType results, OutputStream output, String mimeType) {
         final TimeSeries series = new TimeSeries("time", Millisecond.class);
         String valueAxisLabel = "Value";
+        String title = "Time series";
+        final String timeaxisLabel = "Date / time";
         
         Charset charSet = wms.getCharSet();
         OutputStreamWriter osw = new OutputStreamWriter(output, charSet);
@@ -126,7 +130,8 @@ public class GetTimeSeriesResponse extends Response{
                 FeatureCollection fr;
                 SimpleFeature f;
                 fr = (FeatureCollection) collections.get(0);
-                valueAxisLabel = fr.getSchema().getName().getLocalPart();
+                title += " of " + fr.getSchema().getName().getLocalPart();
+                valueAxisLabel = fr.getSchema().getDescription().toString();
                 
                 reader = fr.features();
                 while (reader.hasNext()) {
@@ -149,14 +154,17 @@ public class GetTimeSeriesResponse extends Response{
             }
         }
         XYDataset dataset =  new TimeSeriesCollection(series);
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(             
-                "Time series of M", 
-                "Date / time",
+
+        JFreeChart chart = ChartFactory.createTimeSeriesChart(
+                title, 
+                timeaxisLabel,
                 valueAxisLabel,
                 dataset,
                 false,
                 false,
                 false);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        plot.setRenderer(new XYLineAndShapeRenderer());        
         try {
             if (mimeType.startsWith("image/png")) {
                 ChartUtilities.writeChartAsPNG(output, chart, IMAGE_WIDTH, IMAGE_HEIGHT);
@@ -198,7 +206,7 @@ public class GetTimeSeriesResponse extends Response{
                 FeatureCollection fr;
                 SimpleFeature f;
                 fr = (FeatureCollection) collections.get(0);
-                writer.println("Time (UTC),"+fr.getSchema().getName().getLocalPart());
+                writer.println("Time (UTC),"+fr.getSchema().getDescription().toString());
                 
                 reader = fr.features();
                 while (reader.hasNext()) {

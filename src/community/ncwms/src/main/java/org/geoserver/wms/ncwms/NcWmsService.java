@@ -4,7 +4,6 @@
  */
 
 package org.geoserver.wms.ncwms;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -19,7 +18,6 @@ import org.geoserver.wms.FeatureInfoRequestParameters;
 import org.geoserver.wms.GetFeatureInfoRequest;
 import org.geoserver.wms.MapLayerInfo;
 import org.geoserver.wms.WMS;
-import org.geoserver.wms.WMSErrorCode;
 import org.geoserver.wms.featureinfo.LayerIdentifier;
 import org.geotools.data.DataUtilities;
 import org.geotools.data.Query;
@@ -28,6 +26,7 @@ import org.geotools.feature.FeatureIterator;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.util.DateRange;
+import org.geotools.util.SimpleInternationalString;
 import org.opengis.feature.Feature;
 import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
@@ -98,7 +97,7 @@ public class NcWmsService {
                         throw new ServiceException("The GetTimeSeries operation is only defined for coverage layers");
                     }
                     LayerIdentifier identifier = getLayerIdentifier(layer);
-                    SimpleFeatureBuilder featureBuilder = getResultFeatureBuilder(buildTypeName(layer));
+                    SimpleFeatureBuilder featureBuilder = getResultFeatureBuilder(layer.getName(), buildTypeDescription(layer));
                     try {
                         TreeSet availableDates = wms.queryCoverageTimes(coverage, queryRange, numDays);
                         FeatureInfoRequestParameters requestParams;
@@ -152,21 +151,23 @@ public class NcWmsService {
         return result;
     }
     
-    public String buildTypeName(MapLayerInfo layer) {
+    public String buildTypeDescription(MapLayerInfo layer) {
         String name = layer.getName();
         if (layer.getCoverage()!=null && layer.getCoverage().getDimensions().size()==1
+                && layer.getCoverage().getDimensions().get(0).getName()!=null
                 && layer.getCoverage().getDimensions().get(0).getUnit()!=null) {
-            name += " ("+layer.getCoverage().getDimensions().get(0).getUnit()+")";
+            name = layer.getCoverage().getDimensions().get(0).getName() + " ("+layer.getCoverage().getDimensions().get(0).getUnit()+")";
         }
         return name;
     }
     
-    private SimpleFeatureBuilder getResultFeatureBuilder(String name) {
+    private SimpleFeatureBuilder getResultFeatureBuilder(String name, String description) {
         //create the builder
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         
         //set global state
         builder.setName(name);
+        builder.setDescription(new SimpleInternationalString(description));
         builder.setNamespaceURI( "http://www.geoserver.org/" );
         builder.setSRS( "EPSG:4326" );
         
