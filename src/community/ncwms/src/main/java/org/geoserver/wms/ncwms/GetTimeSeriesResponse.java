@@ -3,6 +3,7 @@
  * application directory.
  */
 package org.geoserver.wms.ncwms;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -48,14 +49,14 @@ import com.vividsolutions.jts.geom.Coordinate;
 import net.opengis.wfs.FeatureCollectionType;
 
 /**
- * Formats the output of a GetTimeSeries response as a JPG or PNG chart
- * or as a CSV file.
+ * Formats the output of a GetTimeSeries response as a JPG or PNG chart or as a CSV file.
  * 
  * @author Cesar Martinez Izquierdo
  *
  */
-public class GetTimeSeriesResponse extends Response{
+public class GetTimeSeriesResponse extends Response {
     private static final Logger LOGGER = Logging.getLogger(GetTimeSeriesResponse.class);
+
     protected static final Set<String> outputFormats = new HashSet<String>();
     static {
         outputFormats.add("text/csv");
@@ -63,15 +64,18 @@ public class GetTimeSeriesResponse extends Response{
         outputFormats.add("image/jpg");
         outputFormats.add("image/jpeg");
     }
-    
+
     private WMS wms;
+
     private final static String ISO8601_2000_UTC_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+
     private final static int IMAGE_HEIGHT = 600, IMAGE_WIDTH = 700;
-    
+
     public GetTimeSeriesResponse(final WMS wms) {
         super(FeatureCollectionType.class, outputFormats);
         this.wms = wms;
     }
+
     /**
      * @see org.geoserver.ows.Response#canHandle(org.geoserver.platform.Operation)
      */
@@ -82,10 +86,10 @@ public class GetTimeSeriesResponse extends Response{
 
     @Override
     public String getMimeType(Object value, Operation operation) throws ServiceException {
-        GetFeatureInfoRequest request = (GetFeatureInfoRequest) OwsUtils.parameter(
-                operation.getParameters(), GetFeatureInfoRequest.class);
+        GetFeatureInfoRequest request = (GetFeatureInfoRequest) OwsUtils
+                .parameter(operation.getParameters(), GetFeatureInfoRequest.class);
         String infoFormat = (String) request.getRawKvp().get("INFO_FORMAT");
-        if (infoFormat!=null && outputFormats.contains(infoFormat.toLowerCase())) {
+        if (infoFormat != null && outputFormats.contains(infoFormat.toLowerCase())) {
             return infoFormat;
         }
         // default
@@ -107,41 +111,40 @@ public class GetTimeSeriesResponse extends Response{
         String mime = getMimeType(value, operation);
         if (mime.startsWith("image/")) {
             writeChart(request, results, output, mime);
-        }
-        else {
+        } else {
             writeCsv(request, results, output);
         }
     }
-    
+
     @SuppressWarnings("rawtypes")
-    private void writeChart(GetFeatureInfoRequest request, FeatureCollectionType results, OutputStream output, String mimeType) {
+    private void writeChart(GetFeatureInfoRequest request, FeatureCollectionType results,
+            OutputStream output, String mimeType) {
         final TimeSeries series = new TimeSeries("time", Millisecond.class);
         String valueAxisLabel = "Value";
         String title = "Time series";
         final String timeaxisLabel = "Date / time";
-        
+
         Charset charSet = wms.getCharSet();
         OutputStreamWriter osw = new OutputStreamWriter(output, charSet);
-        
+
         FeatureIterator reader = null;
         try {
             final List collections = results.getFeature();
-            if (collections.size()==1) { // we only consider the result if a single layer was queried
+            if (collections.size() == 1) { // we only consider the result if a single layer was queried
                 FeatureCollection fr;
                 SimpleFeature f;
                 fr = (FeatureCollection) collections.get(0);
                 title += " of " + fr.getSchema().getName().getLocalPart();
                 valueAxisLabel = fr.getSchema().getDescription().toString();
-                
+
                 reader = fr.features();
                 while (reader.hasNext()) {
                     Feature feature = reader.next();
-                    if (feature instanceof SimpleFeature)
-                    {
+                    if (feature instanceof SimpleFeature) {
                         f = (SimpleFeature) feature;
                         Date date = (Date) f.getAttribute("date");
-                        Double value  = (Double) f.getAttribute("value");
-                        
+                        Double value = (Double) f.getAttribute("value");
+
                         series.add(new Millisecond(date), value);
                     }
                 }
@@ -153,23 +156,16 @@ public class GetTimeSeriesResponse extends Response{
                 reader.close();
             }
         }
-        XYDataset dataset =  new TimeSeriesCollection(series);
+        XYDataset dataset = new TimeSeriesCollection(series);
 
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                title, 
-                timeaxisLabel,
-                valueAxisLabel,
-                dataset,
-                false,
-                false,
-                false);
+        JFreeChart chart = ChartFactory.createTimeSeriesChart(title, timeaxisLabel, valueAxisLabel,
+                dataset, false, false, false);
         XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setRenderer(new XYLineAndShapeRenderer());        
+        plot.setRenderer(new XYLineAndShapeRenderer());
         try {
             if (mimeType.startsWith("image/png")) {
                 ChartUtilities.writeChartAsPNG(output, chart, IMAGE_WIDTH, IMAGE_HEIGHT);
-            }
-            else if (mimeType.equals("image/jpg") || mimeType.equals("image/jpeg")) {
+            } else if (mimeType.equals("image/jpg") || mimeType.equals("image/jpeg")) {
                 ChartUtilities.writeChartAsJPEG(output, chart, IMAGE_WIDTH, IMAGE_HEIGHT);
             }
         } catch (IOException e) {
@@ -177,45 +173,42 @@ public class GetTimeSeriesResponse extends Response{
             e.printStackTrace();
         }
     }
-    
+
     @SuppressWarnings("rawtypes")
-    private void writeCsv(GetFeatureInfoRequest request, FeatureCollectionType results, OutputStream output) {
+    private void writeCsv(GetFeatureInfoRequest request, FeatureCollectionType results,
+            OutputStream output) {
         Charset charSet = wms.getCharSet();
         OutputStreamWriter osw = new OutputStreamWriter(output, charSet);
         PrintWriter writer = new PrintWriter(osw);
-        
+
         CoordinateReferenceSystem crs = request.getGetMapRequest().getCrs();
-        final Coordinate middle = WMS.pixelToWorld(request.getXPixel(),
-                request.getYPixel(),
+        final Coordinate middle = WMS.pixelToWorld(request.getXPixel(), request.getYPixel(),
                 new ReferencedEnvelope(request.getGetMapRequest().getBbox(), crs),
-                request.getGetMapRequest().getWidth(),
-                request.getGetMapRequest().getHeight());
-        
+                request.getGetMapRequest().getWidth(), request.getGetMapRequest().getHeight());
+
         if (crs instanceof ProjectedCRS) {
-            writer.println("# X: "+middle.y);
-            writer.println("# Y: "+middle.x);            
-        }
-        else {
-            writer.println("# Latitude: "+middle.y);
-            writer.println("# Longitude: "+middle.x);
+            writer.println("# X: " + middle.y);
+            writer.println("# Y: " + middle.x);
+        } else {
+            writer.println("# Latitude: " + middle.y);
+            writer.println("# Longitude: " + middle.x);
         }
         FeatureIterator reader = null;
         try {
             final List collections = results.getFeature();
-            if (collections.size()==1) { // we only consider the result if a single layer was queried
+            if (collections.size() == 1) { // we only consider the result if a single layer was queried
                 FeatureCollection fr;
                 SimpleFeature f;
                 fr = (FeatureCollection) collections.get(0);
-                writer.println("Time (UTC),"+fr.getSchema().getDescription().toString());
-                
+                writer.println("Time (UTC)," + fr.getSchema().getDescription().toString());
+
                 reader = fr.features();
                 while (reader.hasNext()) {
                     Feature feature = reader.next();
-                    if (feature instanceof SimpleFeature)
-                    {
+                    if (feature instanceof SimpleFeature) {
                         f = (SimpleFeature) feature;
                         Date date = (Date) f.getAttribute("date");
-                        Double value  = (Double) f.getAttribute("value");
+                        Double value = (Double) f.getAttribute("value");
                         writer.println(formatAsISO8601_2000_UTC(date) + "," + value);
                     }
                 }
@@ -230,7 +223,7 @@ public class GetTimeSeriesResponse extends Response{
         }
         writer.flush();
     }
-    
+
     private String formatAsISO8601_2000_UTC(Date date) {
         DateFormat df = new SimpleDateFormat(ISO8601_2000_UTC_PATTERN);
         df.setTimeZone(TimeZone.getTimeZone("UTC"));

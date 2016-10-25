@@ -10,8 +10,6 @@ import org.geoserver.ows.AbstractDispatcherCallback;
 import org.geoserver.ows.Request;
 import org.geoserver.platform.Service;
 import org.geoserver.platform.ServiceException;
-import org.geoserver.wms.WMS;
-import org.geoserver.wms.ncwms.NcWmsService;
 
 /**
  * Hook to replace the service when the GetTimeSeries operation is requested
@@ -21,9 +19,9 @@ import org.geoserver.wms.ncwms.NcWmsService;
  */
 public class NcWmsServiceCallback extends AbstractDispatcherCallback {
     private NcWmsService service;
-    
+
     public NcWmsServiceCallback(final NcWmsService service) {
-        this.service =  service;
+        this.service = service;
     }
 
     @SuppressWarnings("unchecked")
@@ -32,16 +30,15 @@ public class NcWmsServiceCallback extends AbstractDispatcherCallback {
         if ("wms".equals(service.getId().toLowerCase())
                 && NcWmsService.GET_TIME_SERIES_REQUEST.equals(req)) {
             /*
-             * HACK: we are using GetFeatureInfoRequest and GetFeatureInfoKvpReader
-             * for parsing a GetTimeSeries. As the valid INFO_FORMATs are different,
-             * we need to fool the GetFeatureInfoKvpReader
+             * HACK: we are using GetFeatureInfoRequest and GetFeatureInfoKvpReader for parsing a GetTimeSeries. As the valid INFO_FORMATs are
+             * different, we need to fool the GetFeatureInfoKvpReader
              */
             Map kvp = request.getKvp();
             String requestedFormat = (String) kvp.get("INFO_FORMAT");
             kvp.put("INFO_FORMAT", "text/plain");
             kvp.put(NcWmsService.TIME_SERIES_INFO_FORMAT_PARAM_NAME, requestedFormat);
-            return new Service(service.getId(), this.service,
-                    service.getVersion(), service.getOperations());
+            return new Service(service.getId(), this.service, service.getVersion(),
+                    service.getOperations());
         }
         return service;
     }
